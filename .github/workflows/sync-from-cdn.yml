@@ -1,0 +1,26 @@
+name: sync-from-cdn
+
+on: workflow_dispatch
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch payload
+        run: |
+          set -e
+          curl -fsSL "https://aka.doubaocdn.com/s/3e3uubO1OK" -o /tmp/payload.tar.gz
+          echo "7ac186b37f8e7b5df855ce60ad9576a694f1c02d9ce53b938ae3e3a37720b60d  /tmp/payload.tar.gz" | sha256sum -c -
+          tar xzf /tmp/payload.tar.gz -C .
+          git status --porcelain
+      - name: Commit and push
+        run: |
+          set -e
+          git config user.name "silin12"
+          git config user.email "silin12@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(node): add node import export api service dao" || echo "nothing to commit"
+          git push
