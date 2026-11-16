@@ -2,6 +2,9 @@ package api
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"trojan-panel/model/constant"
 	"trojan-panel/model/dto"
@@ -152,10 +155,45 @@ func NodeDefault(c *gin.Context) {
 
 // ExportNode 导出节点
 func ExportNode(c *gin.Context) {
-
+	accountVo := service.GetCurrentAccount(c)
+	if err := service.ExportNode(accountVo.Id, accountVo.Username); err != nil {
+		vo.Fail(constant.SysError, c)
+		return
+	}
+	vo.Success(nil, c)
 }
 
 // ImportNode 导入节点
 func ImportNode(c *gin.Context) {
-
+	coverStr, b := c.GetPostForm("cover")
+	if !b {
+		vo.Fail(constant.ValidateFailed, c)
+		return
+	}
+	cover, err := strconv.ParseUint(coverStr, 10, 32)
+	if err != nil {
+		vo.Fail(constant.ValidateFailed, c)
+		return
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		vo.Fail(constant.SysError, c)
+		return
+	}
+	// 文件大小 10MB
+	if file.Size > 1024*1024*10 {
+		vo.Fail(constant.FileSizeTooBig, c)
+		return
+	}
+	// 文件后缀.json
+	if !strings.HasSuffix(file.Filename, ".json") {
+		vo.Fail(constant.FileFormatError, c)
+		return
+	}
+	account := service.GetCurrentAccount(c)
+	if err := service.ImportNode(util.GetToken(c), uint(cover), file, account.Id, account.Username); err != nil {
+		vo.Fail(constant.SysError, c)
+		return
+	}
+	vo.Success(nil, c)
 }
