@@ -288,7 +288,8 @@ func CronScanAccountExpireWarn() {
 
 	// 到期当天提醒
 	if systemVo.ExpireWarnOnDay == 1 {
-		accounts, err := dao.SelectAccountsExpiringIn(now, now+86400000)
+		todayStart, tomorrowStart := util.TodayRangeMilli()
+		accounts, err := dao.SelectAccountsExpiringIn(todayStart, tomorrowStart)
 		if err != nil {
 			logrus.Errorln(fmt.Sprintf("到期当天提醒查询异常 err: %v", err))
 		} else {
@@ -329,6 +330,10 @@ func CronScanAccountExpireWarn() {
 		}
 		// 已经在到期当天提醒过的就不重复发
 		if todayIds[*account.Id] {
+			continue
+		}
+		// 已经过期的不再提醒"还有 N 天到期"，避免过期账号天天收到邮件
+		if account.ExpireTime != nil && *account.ExpireTime <= now {
 			continue
 		}
 		if !emailWarnAllow(fmt.Sprintf("trojan-panel:expire-warn:%d", *account.Id), 86400) {
