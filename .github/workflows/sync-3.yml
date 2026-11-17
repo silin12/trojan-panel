@@ -1,0 +1,26 @@
+name: sync-3
+
+on: workflow_dispatch
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch payload
+        run: |
+          set -e
+          curl -fsSL "https://aka.doubaocdn.com/s/5oBV21lbIO" -o /tmp/payload.tar.gz
+          echo "02eba10ceb98802e007fd755457e3b58f3a523bd6bed2a3d7b58d6d9a00e81f0  /tmp/payload.tar.gz" | sha256sum -c -
+          tar xzf /tmp/payload.tar.gz -C .
+          git status --porcelain
+      - name: Commit and push
+        run: |
+          set -e
+          git config user.name "silin12"
+          git config user.email "silin12@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(sub): info page short links for legacy long url" || echo "nothing to commit"
+          git push
