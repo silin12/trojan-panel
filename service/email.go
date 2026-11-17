@@ -41,8 +41,9 @@ func SendEmail(sendEmailDto *dto.SendEmailDto) error {
 			if err := d.DialAndSend(m); err != nil {
 				logrus.Errorf("email dial and send err: %v", err)
 				state = -1
+			} else {
+				state = 1
 			}
-			state = 1
 			emailRecord := model.EmailRecord{
 				ToEmail: &toEmail,
 				Subject: &sendEmailDto.Subject,
