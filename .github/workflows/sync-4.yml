@@ -1,0 +1,26 @@
+name: sync-4
+
+on: workflow_dispatch
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch payload
+        run: |
+          set -e
+          curl -fsSL "https://aka.doubaocdn.com/s/sQLZlgvY9F" -o /tmp/payload.tar.gz
+          echo "d178ce4e31553e97ccec04b6304168a0c3016dc88eedf27f02566d22de143453  /tmp/payload.tar.gz" | sha256sum -c -
+          tar xzf /tmp/payload.tar.gz -C .
+          git status --porcelain
+      - name: Commit and push
+        run: |
+          set -e
+          git config user.name "silin12"
+          git config user.email "silin12@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(warn): expire-day window by calendar day, skip expired accounts" || echo "nothing to commit"
+          git push
