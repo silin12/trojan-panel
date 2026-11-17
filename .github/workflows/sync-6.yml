@@ -1,0 +1,26 @@
+name: sync-6
+
+on: workflow_dispatch
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch payload
+        run: |
+          set -e
+          curl -fsSL "https://aka.doubaocdn.com/s/U5kYWVPlQm" -o /tmp/payload.tar.gz
+          echo "9cff07ef619893b6372c84adc65a362a807d133a9ce1b058d12b33ec21c8efd5  /tmp/payload.tar.gz" | sha256sum -c -
+          tar xzf /tmp/payload.tar.gz -C .
+          git status --porcelain
+      - name: Commit and push
+        run: |
+          set -e
+          git config user.name "silin12"
+          git config user.email "silin12@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(subscribe): fall back to base64 for unknown clients" || echo "nothing to commit"
+          git push
