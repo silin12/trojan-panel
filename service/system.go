@@ -73,6 +73,9 @@ func SelectSystemByName(name *string) (vo.SystemVo, error) {
 			CaptchaEnable:               systemAccountConfigBo.CaptchaEnable,
 			ExpireWarnEnable:            systemEmailConfigBo.ExpireWarnEnable,
 			ExpireWarnDay:               systemEmailConfigBo.ExpireWarnDay,
+			ExpireWarnOnDay:             systemEmailConfigBo.ExpireWarnOnDay,
+			QuotaWarnEnable:             systemEmailConfigBo.QuotaWarnEnable,
+			QuotaWarnPercent:            systemEmailConfigBo.QuotaWarnPercent,
 			EmailEnable:                 systemEmailConfigBo.EmailEnable,
 			EmailHost:                   systemEmailConfigBo.EmailHost,
 			EmailPort:                   systemEmailConfigBo.EmailPort,
@@ -126,6 +129,15 @@ func UpdateSystemById(systemDto dto.SystemUpdateDto) error {
 	}
 	if systemDto.ExpireWarnDay != nil {
 		systemEmailConfigBo.ExpireWarnDay = *systemDto.ExpireWarnDay
+	}
+	if systemDto.ExpireWarnOnDay != nil {
+		systemEmailConfigBo.ExpireWarnOnDay = *systemDto.ExpireWarnOnDay
+	}
+	if systemDto.QuotaWarnEnable != nil {
+		systemEmailConfigBo.QuotaWarnEnable = *systemDto.QuotaWarnEnable
+	}
+	if systemDto.QuotaWarnPercent != nil {
+		systemEmailConfigBo.QuotaWarnPercent = *systemDto.QuotaWarnPercent
 	}
 	if systemDto.EmailEnable != nil {
 		systemEmailConfigBo.EmailEnable = *systemDto.EmailEnable

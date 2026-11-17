@@ -9,8 +9,11 @@ type SystemUpdateDto struct {
 	TrafficRankEnable           *uint `json:"trafficRankEnable" form:"trafficRankEnable" validate:"required,oneof=0 1"`
 	CaptchaEnable               *uint `json:"captchaEnable" form:"captchaEnable" validate:"required,oneof=0 1"`
 
-	ExpireWarnEnable *uint   `json:"expireWarnEnable" form:"expireWarnEnable" redis:"expireWarnEnable" validate:"required,oneof=0 1"`
-	ExpireWarnDay    *uint   `json:"expireWarnDay" form:"expireWarnDay" redis:"expireWarnDay" validate:"required,gte=0,lte=365"`
+	ExpireWarnEnable *uint   `json:"expireWarnEnable" form:"expireWarnEnable" validate:"required,oneof=0 1"`
+	ExpireWarnDay    *uint   `json:"expireWarnDay" form:"expireWarnDay" validate:"required,gte=0,lte=365"`
+	ExpireWarnOnDay  *uint   `json:"expireWarnOnDay" form:"expireWarnOnDay" validate:"required,oneof=0 1"`
+	QuotaWarnEnable  *uint   `json:"quotaWarnEnable" form:"quotaWarnEnable" validate:"required,oneof=0 1"`
+	QuotaWarnPercent *uint   `json:"quotaWarnPercent" form:"quotaWarnPercent" validate:"required,gte=1,lte=100"`
 	EmailEnable      *uint   `json:"emailEnable" form:"emailEnable" redis:"emailEnable" validate:"required,oneof=0 1"`
 	EmailHost        *string `json:"emailHost" form:"emailHost" validate:"omitempty,min=0,max=64"`
 	EmailPort        *uint   `json:"emailPort" form:"emailPort" validate:"required,validatePort"`

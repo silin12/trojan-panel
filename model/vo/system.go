@@ -9,8 +9,11 @@ type SystemVo struct {
 	TrafficRankEnable           uint `json:"trafficRankEnable" redis:"trafficRankEnable"`
 	CaptchaEnable               uint `json:"captchaEnable" redis:"captchaEnable"`
 
-	ExpireWarnEnable uint   `json:"expireWarnEnable" redis:"expireWarnEnable"`
-	ExpireWarnDay    uint   `json:"expireWarnDay" redis:"expireWarnDay"`
+	ExpireWarnEnable uint   `json:"expireWarnEnable"`
+	ExpireWarnDay    uint   `json:"expireWarnDay"`
+	ExpireWarnOnDay  uint   `json:"expireWarnOnDay"`
+	QuotaWarnEnable  uint   `json:"quotaWarnEnable"`
+	QuotaWarnPercent uint   `json:"quotaWarnPercent"`
 	EmailEnable      uint   `json:"emailEnable"`
 	EmailHost        string `json:"emailHost" redis:"emailHost"`
 	EmailPort        uint   `json:"emailPort" redis:"emailPort"`

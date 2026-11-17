@@ -12,6 +12,9 @@ type SystemAccountConfigBo struct {
 type SystemEmailConfigBo struct {
 	ExpireWarnEnable uint   `json:"expireWarnEnable"` // 是否开启到期警告 0/否 1/是
 	ExpireWarnDay    uint   `json:"expireWarnDay"`    // 到期警告 单位/天
+	ExpireWarnOnDay  uint   `json:"expireWarnOnDay"`  // 到期当天是否再提醒一次 0/否 1/是
+	QuotaWarnEnable  uint   `json:"quotaWarnEnable"`  // 是否开启流量提醒 0/否 1/是
+	QuotaWarnPercent uint   `json:"quotaWarnPercent"` // 流量提醒阈值 百分比 1-100
 	EmailEnable      uint   `json:"emailEnable"`      // 是否开启邮箱功能 0/否 1/是
 	EmailHost        string `json:"emailHost"`        // 系统邮箱设置-host
 	EmailPort        uint   `json:"emailPort"`        // 系统邮箱设置-port

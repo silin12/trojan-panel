@@ -21,14 +21,15 @@ Clash for windows 参考文档：
 2. https://github.com/crossutility/Quantumult/blob/master/extra-subscription-feature.md
 3. https://github.com/Dreamacro/clash/wiki/Configuration
 */
-func SubscribeClash(pass string) (*model.Account, string, []byte, vo.SystemVo, error) {
+// buildClashProxies 生成 Clash 代理列表，其它客户端格式（v2rayN / sing-box）复用这份数据
+func buildClashProxies(pass string) (*model.Account, string, []interface{}, []string, vo.SystemVo, error) {
 	account, err := dao.SelectAccountClashSubscribe(pass)
 	if err != nil {
-		return nil, "", []byte{}, vo.SystemVo{}, err
+		return nil, "", nil, nil, vo.SystemVo{}, err
 	}
 	nodes, err := dao.SelectNodes()
 	if err != nil {
-		return nil, "", []byte{}, vo.SystemVo{}, err
+		return nil, "", nil, nil, vo.SystemVo{}, err
 	}
 
 	userInfo := fmt.Sprintf("upload=%d; download=%d; total=%d; expire=%d",
@@ -37,28 +38,27 @@ func SubscribeClash(pass string) (*model.Account, string, []byte, vo.SystemVo, e
 		*account.Quota,
 		*account.ExpireTime/1000)
 
-	clashConfig := bo.ClashConfig{}
 	var ClashConfigInterface []interface{}
 	var proxies []string
 	for _, item := range nodes {
 		if *item.NodeTypeId == constant.Xray {
 			nodeXray, err := dao.SelectNodeXrayById(item.NodeSubId)
 			if err != nil {
-				return nil, "", []byte{}, vo.SystemVo{}, err
+				return nil, "", nil, nil, vo.SystemVo{}, err
 			}
 
 			streamSettings := bo.StreamSettings{}
 			if nodeXray.StreamSettings != nil && *nodeXray.StreamSettings != "" {
 				if err = json.Unmarshal([]byte(*nodeXray.StreamSettings), &streamSettings); err != nil {
 					logrus.Errorln(fmt.Sprintf("SystemVo JSON反转失败 err: %v", err))
-					return nil, "", []byte{}, vo.SystemVo{}, errors.New(constant.SysError)
+					return nil, "", nil, nil, vo.SystemVo{}, errors.New(constant.SysError)
 				}
 			}
 			settings := bo.Settings{}
 			if nodeXray.Settings != nil && *nodeXray.Settings != "" {
 				if err = json.Unmarshal([]byte(*nodeXray.Settings), &settings); err != nil {
 					logrus.Errorln(fmt.Sprintf("SystemVo JSON反转失败 err: %v", err))
-					return nil, "", []byte{}, vo.SystemVo{}, errors.New(constant.SysError)
+					return nil, "", nil, nil, vo.SystemVo{}, errors.New(constant.SysError)
 				}
 			}
 			switch *nodeXray.Protocol {
@@ -189,7 +189,7 @@ func SubscribeClash(pass string) (*model.Account, string, []byte, vo.SystemVo, e
 		} else if *item.NodeTypeId == constant.TrojanGo {
 			nodeTrojanGo, err := dao.SelectNodeTrojanGoById(item.NodeSubId)
 			if err != nil {
-				return nil, "", []byte{}, vo.SystemVo{}, err
+				return nil, "", nil, nil, vo.SystemVo{}, err
 			}
 			trojanGo := bo.TrojanGo{
 				Name:     *item.Name,
@@ -210,7 +210,7 @@ func SubscribeClash(pass string) (*model.Account, string, []byte, vo.SystemVo, e
 		} else if *item.NodeTypeId == constant.Hysteria {
 			nodeHysteria, err := dao.SelectNodeHysteriaById(item.NodeSubId)
 			if err != nil {
-				return nil, "", []byte{}, vo.SystemVo{}, err
+				return nil, "", nil, nil, vo.SystemVo{}, err
 			}
 			hysteria := bo.Hysteria{
 				Name:           *item.Name,
@@ -231,7 +231,7 @@ func SubscribeClash(pass string) (*model.Account, string, []byte, vo.SystemVo, e
 		} else if *item.NodeTypeId == constant.Hysteria2 {
 			nodeHysteria2, err := dao.SelectNodeHysteria2ById(item.NodeSubId)
 			if err != nil {
-				return nil, "", []byte{}, vo.SystemVo{}, err
+				return nil, "", nil, nil, vo.SystemVo{}, err
 			}
 			hysteria2 := bo.Hysteria2{
 				Name:           *item.Name,
@@ -254,6 +254,21 @@ func SubscribeClash(pass string) (*model.Account, string, []byte, vo.SystemVo, e
 			proxies = append(proxies, *item.Name)
 		}
 	}
+	systemName := constant.SystemName
+	systemConfig, err := SelectSystemByName(&systemName)
+	if err != nil {
+		return nil, "", nil, nil, vo.SystemVo{}, errors.New(constant.SysError)
+	}
+	return account, userInfo, ClashConfigInterface, proxies, systemConfig, nil
+}
+
+// SubscribeClash 生成 Clash 订阅 YAML
+func SubscribeClash(pass string) (*model.Account, string, []byte, vo.SystemVo, error) {
+	account, userInfo, clashConfigInterface, proxies, systemConfig, err := buildClashProxies(pass)
+	if err != nil {
+		return nil, "", []byte{}, vo.SystemVo{}, err
+	}
+
 	proxyGroups := make([]bo.ProxyGroup, 0)
 	proxyGroup := bo.ProxyGroup{
 		Name:    "PROXY",
@@ -261,16 +276,12 @@ func SubscribeClash(pass string) (*model.Account, string, []byte, vo.SystemVo, e
 		Proxies: proxies,
 	}
 	proxyGroups = append(proxyGroups, proxyGroup)
-	clashConfig.ProxyGroups = proxyGroups
-	clashConfig.Proxies = ClashConfigInterface
 
-	clashConfigYaml, err := yaml.Marshal(&clashConfig)
-	if err != nil {
-		return nil, "", []byte{}, vo.SystemVo{}, errors.New(constant.SysError)
+	clashConfig := bo.ClashConfig{
+		Proxies:     clashConfigInterface,
+		ProxyGroups: proxyGroups,
 	}
-
-	systemName := constant.SystemName
-	systemConfig, err := SelectSystemByName(&systemName)
+	clashConfigYaml, err := yaml.Marshal(&clashConfig)
 	if err != nil {
 		return nil, "", []byte{}, vo.SystemVo{}, errors.New(constant.SysError)
 	}

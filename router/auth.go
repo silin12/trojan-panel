@@ -9,6 +9,8 @@ import (
 func initAuthRouter(router *gin.Engine) {
 	trojan := router.Group("/api")
 	{
+		// 订阅短链：/api/s/:code，客户端按 UA 自动取格式，浏览器打开显示信息页
+		trojan.GET("/s/:code", api.SubscribeShort)
 		trojanAuth := trojan.Group("/auth")
 		{
 			// 登录

@@ -263,7 +263,16 @@ func CronScanAccounts() {
 	}
 }
 
-// CronScanAccountExpireWarn 定时任务：到期警告
+// emailWarnAllow 邮件提醒去重：同一个 key 在 ttl 秒内只允许发送一次
+func emailWarnAllow(key string, ttl int64) bool {
+	if last, err := redis.Client.String.Get(key).Int(); err == nil && last > 0 {
+		return false
+	}
+	redis.Client.String.Set(key, 1, ttl)
+	return true
+}
+
+// CronScanAccountExpireWarn 定时任务：到期警告（提前 N 天一次 + 到期当天一次）
 func CronScanAccountExpireWarn() {
 	systemName := constant.SystemName
 	systemVo, err := SelectSystemByName(&systemName)
@@ -273,27 +282,131 @@ func CronScanAccountExpireWarn() {
 	if systemVo.EmailEnable == 0 || systemVo.ExpireWarnEnable == 0 {
 		return
 	}
+
+	now := util.NowMilli()
+	todayIds := make(map[uint]bool, 0)
+
+	// 到期当天提醒
+	if systemVo.ExpireWarnOnDay == 1 {
+		accounts, err := dao.SelectAccountsExpiringIn(now, now+86400000)
+		if err != nil {
+			logrus.Errorln(fmt.Sprintf("到期当天提醒查询异常 err: %v", err))
+		} else {
+			for _, account := range accounts {
+				if account.Id == nil || account.Email == nil || *account.Email == "" {
+					continue
+				}
+				todayIds[*account.Id] = true
+				if !emailWarnAllow(fmt.Sprintf("trojan-panel:expire-warn-today:%d", *account.Id), 86400*3) {
+					continue
+				}
+				emailDto := dto.SendEmailDto{
+					FromEmailName: systemVo.SystemName,
+					ToEmails:      []string{*account.Email},
+					Subject:       "账号到期提醒",
+					Content:       fmt.Sprintf("您的账户: %s 今天到期，到期后将无法继续使用，请及时续期", *account.Username),
+				}
+				if err = SendEmail(&emailDto); err != nil {
+					logrus.Errorln(fmt.Sprintf("到期当天提醒邮件发送失败 err: %v", err))
+				}
+			}
+		}
+	}
+
+	// 提前 N 天提醒
 	expireWarnDay := systemVo.ExpireWarnDay
+	if expireWarnDay == 0 {
+		return
+	}
 	accounts, err := dao.SelectAccountsByExpireTime(util.DayToMilli(expireWarnDay))
 	if err != nil {
 		logrus.Errorln(err.Error())
 		return
 	}
-	if len(accounts) > 0 {
-		for _, account := range accounts {
-			if account.Email != nil && *account.Email != "" {
-				// 发送到期邮件
-				emailDto := dto.SendEmailDto{
-					FromEmailName: systemVo.SystemName,
-					ToEmails:      []string{*account.Email},
-					Subject:       "账号到期提醒",
-					Content:       fmt.Sprintf("您的账户: %s,还有%d天到期,请及时续期", *account.Username, expireWarnDay),
-				}
-				if err = SendEmail(&emailDto); err != nil {
-					logrus.Errorln(fmt.Sprintf("到期警告邮件发送失败 err: %v", err))
-				}
+	for _, account := range accounts {
+		if account.Id == nil || account.Email == nil || *account.Email == "" {
+			continue
+		}
+		// 已经在到期当天提醒过的就不重复发
+		if todayIds[*account.Id] {
+			continue
+		}
+		if !emailWarnAllow(fmt.Sprintf("trojan-panel:expire-warn:%d", *account.Id), 86400) {
+			continue
+		}
+		dayLeft := expireWarnDay
+		if account.ExpireTime != nil && *account.ExpireTime > now {
+			dayLeft = (*account.ExpireTime - now) / 86400000
+			if dayLeft < 1 {
+				dayLeft = 1
 			}
 		}
+		emailDto := dto.SendEmailDto{
+			FromEmailName: systemVo.SystemName,
+			ToEmails:      []string{*account.Email},
+			Subject:       "账号到期提醒",
+			Content:       fmt.Sprintf("您的账户: %s 还有 %d 天到期，请及时续期", *account.Username, dayLeft),
+		}
+		if err = SendEmail(&emailDto); err != nil {
+			logrus.Errorln(fmt.Sprintf("到期警告邮件发送失败 err: %v", err))
+		}
+	}
+}
+
+// CronScanAccountQuotaWarn 定时任务：流量提醒（用量超过阈值时提醒一次）
+func CronScanAccountQuotaWarn() {
+	systemName := constant.SystemName
+	systemVo, err := SelectSystemByName(&systemName)
+	if err != nil {
+		return
+	}
+	if systemVo.EmailEnable == 0 || systemVo.QuotaWarnEnable == 0 || systemVo.QuotaWarnPercent == 0 {
+		return
+	}
+
+	accounts, err := dao.SelectAccountsWithQuota()
+	if err != nil {
+		logrus.Errorln(err.Error())
+		return
+	}
+	for _, account := range accounts {
+		if account.Id == nil || account.Email == nil || *account.Email == "" || account.Quota == nil || *account.Quota <= 0 {
+			continue
+		}
+		var download, upload int
+		if account.Download != nil {
+			download = *account.Download
+		}
+		if account.Upload != nil {
+			upload = *account.Upload
+		}
+		used := download + upload
+		percent := uint(used) * 100 / uint(*account.Quota)
+		if percent < systemVo.QuotaWarnPercent {
+			continue
+		}
+		// 已经按相同或更高比例提醒过就不重复发
+		key := fmt.Sprintf("trojan-panel:quota-warn:%d", *account.Id)
+		if last, err := redis.Client.String.Get(key).Int(); err == nil && last >= int(percent) {
+			continue
+		}
+		emailDto := dto.SendEmailDto{
+			FromEmailName: systemVo.SystemName,
+			ToEmails:      []string{*account.Email},
+			Subject:       "账号流量提醒",
+			Content: fmt.Sprintf("您的账户: %s 已使用流量 %s，占总流量 %s 的 %d%%，剩余 %s，请合理安排使用",
+				*account.Username,
+				util.FormatByte(int64(used)),
+				util.FormatByte(int64(*account.Quota)),
+				percent,
+				util.FormatByte(int64(*account.Quota-used))),
+		}
+		if err = SendEmail(&emailDto); err != nil {
+			logrus.Errorln(fmt.Sprintf("流量提醒邮件发送失败 err: %v", err))
+			continue
+		}
+		// 30 天内不再重复，月度重置后自动失效
+		redis.Client.String.Set(key, int(percent), 86400*30)
 	}
 }
 

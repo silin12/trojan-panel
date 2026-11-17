@@ -476,8 +476,54 @@ func SelectAccountUsernameByDeletedOrExpireTime() ([]string, error) {
 
 // SelectAccountsByExpireTime 用于发邮件
 func SelectAccountsByExpireTime(expireTime uint) ([]model.Account, error) {
-	buildSelect, values, err := builder.NamedQuery("select username,email from account where (quota < 0 or quota > download + upload) and expire_time <= {{expire_time}}",
+	buildSelect, values, err := builder.NamedQuery("select id,username,email,expire_time,quota,download,upload from account where (quota < 0 or quota > download + upload) and expire_time <= {{expire_time}}",
 		map[string]interface{}{"expire_time": expireTime})
+	if err != nil {
+		logrus.Errorln(err.Error())
+		return nil, errors.New(constant.SysError)
+	}
+	rows, err := db.Query(buildSelect, values...)
+	if err != nil {
+		logrus.Errorln(err.Error())
+		return nil, errors.New(constant.SysError)
+	}
+	defer rows.Close()
+
+	var accounts []model.Account
+	if err = scanner.Scan(rows, &accounts); err != nil {
+		logrus.Errorln(err.Error())
+		return nil, errors.New(constant.SysError)
+	}
+	return accounts, nil
+}
+
+// SelectAccountsExpiringIn 查询 expireTime 内即将到期的账户（email 不为空）
+func SelectAccountsExpiringIn(start uint, end uint) ([]model.Account, error) {
+	buildSelect, values, err := builder.NamedQuery("select id,username,email,expire_time from account where deleted = 0 and email <> '' and expire_time > {{start}} and expire_time <= {{end}}",
+		map[string]interface{}{"start": start, "end": end})
+	if err != nil {
+		logrus.Errorln(err.Error())
+		return nil, errors.New(constant.SysError)
+	}
+	rows, err := db.Query(buildSelect, values...)
+	if err != nil {
+		logrus.Errorln(err.Error())
+		return nil, errors.New(constant.SysError)
+	}
+	defer rows.Close()
+
+	var accounts []model.Account
+	if err = scanner.Scan(rows, &accounts); err != nil {
+		logrus.Errorln(err.Error())
+		return nil, errors.New(constant.SysError)
+	}
+	return accounts, nil
+}
+
+// SelectAccountsWithQuota 查询有配额限制的普通用户（用于流量提醒）
+func SelectAccountsWithQuota() ([]model.Account, error) {
+	buildSelect, values, err := builder.NamedQuery("select id,username,email,quota,download,upload from account where deleted = 0 and quota > 0 and email <> '' and role_id = {{role_id}}",
+		map[string]interface{}{"role_id": constant.USER})
 	if err != nil {
 		logrus.Errorln(err.Error())
 		return nil, errors.New(constant.SysError)

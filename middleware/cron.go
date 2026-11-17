@@ -14,6 +14,8 @@ func InitCron() {
 	_, _ = c.AddFunc("@every 1m", service.CronScanAccounts)
 	// 每天12:00发送到期提醒邮件
 	_, _ = c.AddFunc("0 0 12 * * *", service.CronScanAccountExpireWarn)
+	// 每小时扫描一次流量用量，超过阈值发提醒邮件
+	_, _ = c.AddFunc("@every 1h", service.CronScanAccountQuotaWarn)
 	// 每隔一小时刷新流量排行缓存
 	_, _ = c.AddFunc("@every 1h", service.CronTrafficRank)
 	// 每月重设除管理员之外的用户下载和上传流量
