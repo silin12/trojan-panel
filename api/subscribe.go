@@ -110,10 +110,19 @@ func detectSubscribeFormat(c *gin.Context) string {
 		strings.Contains(userAgent, "kitsunebi"), strings.Contains(userAgent, "ssr"),
 		strings.Contains(userAgent, "surge"), strings.Contains(userAgent, "loon"),
 		strings.Contains(userAgent, "passwall"), strings.Contains(userAgent, "openwrt"),
-		strings.Contains(userAgent, "matsuri"), strings.Contains(userAgent, "clash.meta"):
+		strings.Contains(userAgent, "matsuri"), strings.Contains(userAgent, "clash.meta"),
+		strings.Contains(userAgent, "v2raytun"), strings.Contains(userAgent, "happ"),
+		strings.Contains(userAgent, "streisand"), strings.Contains(userAgent, "karing"),
+		strings.Contains(userAgent, "shadowsocks"), strings.Contains(userAgent, "winxray"):
 		return "v2ray"
 	}
-	return "info"
+
+	// 没匹配到已知客户端：只有浏览器会主动要求 text/html，其余一律按 V2Ray(base64) 输出，
+	// 这样 v2rayN 之类 UA 不规范的客户端也能直接用同一条短链。
+	if strings.Contains(strings.ToLower(c.Request.Header.Get("Accept")), "text/html") {
+		return "info"
+	}
+	return "v2ray"
 }
 
 // writeSubscribe 按格式输出订阅内容
