@@ -158,10 +158,8 @@ func writeSubscribe(c *gin.Context, pass string, format string) {
 			return
 		}
 		// 浏览器访问：展示订阅信息页
-		code := c.Param("code")
-		if code == "" {
-			code = base64.StdEncoding.EncodeToString([]byte(pass))
-		}
+		// 用账号自身的 id + pass 现算短码，这样旧长链接打开时页面里的四个格式链接同样可用
+		code := util.EncodeShortCode(*account.Id, pass)
 		page := service.BuildSubscribeInfoPage(account, code, systemConfig)
 		c.Data(200, "text/html; charset=utf-8", []byte(page))
 	}
