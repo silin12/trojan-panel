@@ -470,7 +470,7 @@ func SubscribeSingBox(pass string) (*model.Account, string, []byte, error) {
 }
 
 // BuildSubscribeInfoPage 浏览器打开订阅链接时展示的信息页
-func BuildSubscribeInfoPage(account *model.Account, code string, systemConfig vo.SystemVo) string {
+func BuildSubscribeInfoPage(account *model.Account, token string, systemConfig vo.SystemVo) string {
 	var quota, download, upload, expire int64
 	if account.Quota != nil {
 		quota = int64(*account.Quota)
@@ -506,6 +506,6 @@ func BuildSubscribeInfoPage(account *model.Account, code string, systemConfig vo
 	page = strings.ReplaceAll(page, "{{TOTAL}}", totalText)
 	page = strings.ReplaceAll(page, "{{REMAIN}}", remainText)
 	page = strings.ReplaceAll(page, "{{EXPIRE}}", expireText)
-	page = strings.ReplaceAll(page, "{{CODE}}", code)
+	page = strings.ReplaceAll(page, "{{TOKEN}}", token)
 	return page
 }

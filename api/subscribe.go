@@ -14,9 +14,11 @@ import (
 	"trojan-panel/util"
 )
 
-// subscribeShortLink 生成账号对应的订阅短链
-func subscribeShortLink(accountId uint, password string) string {
-	return fmt.Sprintf("/api/s/%s", util.EncodeShortCode(accountId, password))
+// subscribeLegacyLink 生成旧格式订阅链接：/api/auth/subscribe/<base64url(pass)>
+// 只依赖连接密码 pass，账号 ID 变化、面板实例迁移后链接保持不变；
+// 使用 URL-safe base64（无填充），避免 +//= 在路径里被转义
+func subscribeLegacyLink(password string) string {
+	return fmt.Sprintf("/api/auth/subscribe/%s", base64.RawURLEncoding.EncodeToString([]byte(password)))
 }
 
 // ClashSubscribe 获取Clash订阅地址
@@ -27,7 +29,7 @@ func ClashSubscribe(c *gin.Context) {
 		vo.Fail(err.Error(), c)
 		return
 	}
-	vo.Success(subscribeShortLink(accountVo.Id, password), c)
+	vo.Success(subscribeLegacyLink(password), c)
 }
 
 // ClashSubscribeForSb 获取指定人的Clash订阅地址
@@ -43,18 +45,26 @@ func ClashSubscribeForSb(c *gin.Context) {
 		vo.Fail(err.Error(), c)
 		return
 	}
-	vo.Success(subscribeShortLink(*accountRequiredIdDto.Id, password), c)
+	vo.Success(subscribeLegacyLink(password), c)
 }
 
 // Subscribe 订阅（兼容旧链接 /api/auth/subscribe/{base64(pass)}）
 func Subscribe(c *gin.Context) {
 	token := c.Param("token")
-	tokenDecode, err := base64.StdEncoding.DecodeString(token)
+	tokenDecode, err := decodeSubscribeToken(token)
 	if err != nil {
 		vo.Fail(constant.SysError, c)
 		return
 	}
 	writeSubscribe(c, string(tokenDecode), detectSubscribeFormat(c))
+}
+
+// decodeSubscribeToken 同时兼容 URL-safe base64（现行链接）和标准 base64（历史链接）
+func decodeSubscribeToken(token string) ([]byte, error) {
+	if b, err := base64.RawURLEncoding.DecodeString(token); err == nil {
+		return b, nil
+	}
+	return base64.StdEncoding.DecodeString(token)
 }
 
 // SubscribeShort 订阅短链 /s/:code，按 UA 或 format 参数返回不同客户端格式
@@ -167,9 +177,9 @@ func writeSubscribe(c *gin.Context, pass string, format string) {
 			return
 		}
 		// 浏览器访问：展示订阅信息页
-		// 用账号自身的 id + pass 现算短码，这样旧长链接打开时页面里的四个格式链接同样可用
-		code := util.EncodeShortCode(*account.Id, pass)
-		page := service.BuildSubscribeInfoPage(account, code, systemConfig)
+		// 用连接密码的 base64url 现算旧格式链接，页面里四个格式链接同样可用
+		token := base64.RawURLEncoding.EncodeToString([]byte(pass))
+		page := service.BuildSubscribeInfoPage(account, token, systemConfig)
 		c.Data(200, "text/html; charset=utf-8", []byte(page))
 	}
 }

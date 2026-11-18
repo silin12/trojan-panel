@@ -72,26 +72,26 @@ border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer}
       <h3>订阅地址（复制到客户端使用）</h3>
       <div class="row">
         <span class="name">Clash / Mihomo</span>
-        <span class="link" id="u-clash">/api/s/{{CODE}}?format=clash</span>
+        <span class="link" id="u-clash">/api/auth/subscribe/{{TOKEN}}?format=clash</span>
         <button type="button" data-target="u-clash">复制</button>
       </div>
       <div class="row">
         <span class="name">v2rayN / 小火箭</span>
-        <span class="link" id="u-v2ray">/api/s/{{CODE}}?format=v2ray</span>
+        <span class="link" id="u-v2ray">/api/auth/subscribe/{{TOKEN}}?format=v2ray</span>
         <button type="button" data-target="u-v2ray">复制</button>
       </div>
       <div class="row">
         <span class="name">sing-box</span>
-        <span class="link" id="u-singbox">/api/s/{{CODE}}?format=singbox</span>
+        <span class="link" id="u-singbox">/api/auth/subscribe/{{TOKEN}}?format=singbox</span>
         <button type="button" data-target="u-singbox">复制</button>
       </div>
       <div class="row">
         <span class="name">通用 Base64</span>
-        <span class="link" id="u-base64">/api/s/{{CODE}}?format=base64</span>
+        <span class="link" id="u-base64">/api/auth/subscribe/{{TOKEN}}?format=base64</span>
         <button type="button" data-target="u-base64">复制</button>
       </div>
       <div class="tip">
-        直接粘贴 /api/s/{{CODE}} 这个短地址也可以：客户端会自动按自己的类型拿到对应格式，
+        直接粘贴 /api/auth/subscribe/{{TOKEN}} 这个地址也可以：客户端会自动按自己的类型拿到对应格式，
         浏览器打开则显示本页面。
       </div>
     </div>
